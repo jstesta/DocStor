@@ -11,6 +11,7 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.provider.Settings;
 import android.support.annotation.NonNull;
+import android.support.design.widget.BottomNavigationView;
 import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
@@ -21,7 +22,8 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity
+        implements BottomNavigationView.OnNavigationItemSelectedListener {
 
     private static final String TAG = "MainActivity";
 
@@ -39,6 +41,9 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
+
+        BottomNavigationView bottomNavigationView = findViewById(R.id.bottom_nav);
+        bottomNavigationView.setOnNavigationItemSelectedListener(this);
 
         checkFirstRun();
     }
@@ -135,14 +140,18 @@ public class MainActivity extends AppCompatActivity {
         } else {
             mExternalStorageAvailable = mExternalStorageWriteable = false;
         }
-        //handleExternalStorageState(mExternalStorageAvailable, mExternalStorageWriteable);
+        handleExternalStorageState(mExternalStorageAvailable, mExternalStorageWriteable);
+    }
+
+    private void handleExternalStorageState(boolean mExternalStorageAvailable, boolean mExternalStorageWriteable) {
+
     }
 
     private void startWatchingExternalStorage() {
         mExternalStorageReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
-                Log.i("test", "Storage: " + intent.getData());
+                Log.i(TAG, "Storage: " + intent.getData());
                 updateExternalStorageState();
             }
         };
@@ -250,5 +259,19 @@ public class MainActivity extends AppCompatActivity {
 
         // Update the shared preferences with the current version code
         prefs.edit().putInt(PREF_VERSION_CODE_KEY, currentVersionCode).apply();
+    }
+
+    @Override
+    public boolean onNavigationItemSelected(@NonNull MenuItem item) {
+        switch (item.getItemId()) {
+            case R.id.documents:
+                return true;
+            case R.id.music:
+                return true;
+            case R.id.pictures:
+                return true;
+        }
+
+        return false;
     }
 }
