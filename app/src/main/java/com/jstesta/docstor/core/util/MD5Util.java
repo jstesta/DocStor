@@ -1,4 +1,4 @@
-package com.jstesta.docstor.util;
+package com.jstesta.docstor.core.util;
 
 /*
  * Copyright (C) 2012 The CyanogenMod Project

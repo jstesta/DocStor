@@ -1,4 +1,4 @@
-package com.jstesta.docstor.util;
+package com.jstesta.docstor.core.util;
 
 import java.util.Arrays;
 import java.util.Collection;

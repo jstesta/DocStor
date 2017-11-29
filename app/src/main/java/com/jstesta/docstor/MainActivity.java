@@ -14,6 +14,9 @@ import android.support.annotation.NonNull;
 import android.support.design.widget.BottomNavigationView;
 import android.support.design.widget.Snackbar;
 import android.support.v4.app.ActivityCompat;
+import android.support.v4.app.Fragment;
+import android.support.v4.app.FragmentManager;
+import android.support.v4.app.FragmentTransaction;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
@@ -22,8 +25,13 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 
+import com.jstesta.docstor.core.misc.MediaType;
+import com.jstesta.docstor.core.model.SyncFile;
+import com.jstesta.docstor.gui.fragment.FileListFragment;
+
 public class MainActivity extends AppCompatActivity
-        implements BottomNavigationView.OnNavigationItemSelectedListener {
+        implements BottomNavigationView.OnNavigationItemSelectedListener,
+        FileListFragment.OnItemListInteractionListener {
 
     private static final String TAG = "MainActivity";
 
@@ -44,6 +52,7 @@ public class MainActivity extends AppCompatActivity
 
         BottomNavigationView bottomNavigationView = findViewById(R.id.bottom_nav);
         bottomNavigationView.setOnNavigationItemSelectedListener(this);
+        bottomNavigationView.setSelectedItemId(R.id.documents);
 
         checkFirstRun();
     }
@@ -263,15 +272,35 @@ public class MainActivity extends AppCompatActivity
 
     @Override
     public boolean onNavigationItemSelected(@NonNull MenuItem item) {
+
+        FragmentTransaction fragmentTransaction;
+
         switch (item.getItemId()) {
             case R.id.documents:
+                Fragment docFragment = FileListFragment.newInstance(MediaType.DOCUMENTS);
+                fragmentTransaction = getSupportFragmentManager().beginTransaction();
+                fragmentTransaction.replace(R.id.fragment_container, docFragment, "docFragment");
+                fragmentTransaction.commit();
                 return true;
             case R.id.music:
+                Fragment musicFragment = FileListFragment.newInstance(MediaType.MUSIC);
+                fragmentTransaction = getSupportFragmentManager().beginTransaction();
+                fragmentTransaction.replace(R.id.fragment_container, musicFragment, "musicFragment");
+                fragmentTransaction.commit();
                 return true;
             case R.id.pictures:
+                Fragment picsFragment = FileListFragment.newInstance(MediaType.PICTURES);
+                fragmentTransaction = getSupportFragmentManager().beginTransaction();
+                fragmentTransaction.replace(R.id.fragment_container, picsFragment, "picsFragment");
+                fragmentTransaction.commit();
                 return true;
         }
 
         return false;
+    }
+
+    @Override
+    public void onItemListInteraction(SyncFile item) {
+        Log.d(TAG, "onItemListInteraction: ");
     }
 }
