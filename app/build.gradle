@@ -43,16 +43,8 @@ dependencies {
     // explicitly depend on RxJava's latest version for bug fixes and new features.
     compile 'io.reactivex.rxjava2:rxjava:2.1.6'
 
-    // GreenDAO ORM
-    compile 'org.greenrobot:greendao:3.2.2'
-
     // Enhanced BottomNavigation
     compile 'com.aurelhubert:ahbottomnavigation:2.1.0'
 }
 
 apply plugin: 'com.google.gms.google-services'
-apply plugin: 'org.greenrobot.greendao'
-
-greendao {
-    schemaVersion 1
-}

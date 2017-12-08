@@ -1,4 +1,4 @@
-package com.jstesta.docstor.core.misc;
+package com.jstesta.docstor.core.enums;
 
 import android.os.Environment;
 
@@ -10,23 +10,29 @@ import java.util.Collection;
  */
 
 public enum MediaType {
-    DOCUMENTS(Arrays.asList(
+    DOCUMENTS("DOCUMENTS", Arrays.asList(
             Environment.DIRECTORY_DOCUMENTS,
             Environment.DIRECTORY_DOWNLOADS)),
-    PICTURES(Arrays.asList(
+    PICTURES("PICTURES", Arrays.asList(
             Environment.DIRECTORY_DCIM,
             Environment.DIRECTORY_PICTURES,
             Environment.DIRECTORY_DOWNLOADS)),
-    MUSIC(Arrays.asList(
+    MUSIC("MUSIC", Arrays.asList(
             Environment.DIRECTORY_MUSIC,
             Environment.DIRECTORY_PODCASTS,
             Environment.DIRECTORY_RINGTONES,
             Environment.DIRECTORY_DOWNLOADS)),;
 
+    private String identifier;
     private Collection<String> paths;
 
-    MediaType(Collection<String> paths) {
+    MediaType(String identifier, Collection<String> paths) {
+        this.identifier = identifier;
         this.paths = paths;
+    }
+
+    public String getIdentifier() {
+        return identifier;
     }
 
     public Collection<String> getPaths() {

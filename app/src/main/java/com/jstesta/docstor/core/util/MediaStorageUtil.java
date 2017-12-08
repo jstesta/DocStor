@@ -3,7 +3,7 @@ package com.jstesta.docstor.core.util;
 import android.os.Environment;
 import android.util.Log;
 
-import com.jstesta.docstor.core.misc.MediaType;
+import com.jstesta.docstor.core.enums.MediaType;
 
 import java.io.File;
 import java.io.FilenameFilter;
@@ -50,6 +50,11 @@ public final class MediaStorageUtil {
 
             Log.d(TAG, "listFilesIn: env. path -> " + path);
             allFiles.addAll(getFilesIn(dir, TYPE_FILE_FILTER.get(mediaType)));
+
+            File[] listFiles = dir.listFiles();
+            if (listFiles == null) {
+                continue;
+            }
 
             for (File f : dir.listFiles()) {
 
