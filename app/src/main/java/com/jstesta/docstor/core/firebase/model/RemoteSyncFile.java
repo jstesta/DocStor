@@ -6,6 +6,8 @@ package com.jstesta.docstor.core.firebase.model;
 
 public class RemoteSyncFile {
 
+    private String id;
+
     private String mediaType;
 
     private String path;
@@ -17,11 +19,16 @@ public class RemoteSyncFile {
     public RemoteSyncFile() {
     }
 
-    public RemoteSyncFile(String mediaType, String path, String hash, String storagePath) {
+    public RemoteSyncFile(String id, String mediaType, String path, String hash, String storagePath) {
+        this.id = id;
         this.mediaType = mediaType;
         this.path = path;
         this.hash = hash;
         this.storagePath = storagePath;
+    }
+
+    public String getId() {
+        return id;
     }
 
     public String getMediaType() {
@@ -61,7 +68,8 @@ public class RemoteSyncFile {
     @Override
     public String toString() {
         return "RemoteSyncFile{" +
-                "mediaType='" + mediaType + '\'' +
+                "id='" + id + '\'' +
+                ", mediaType='" + mediaType + '\'' +
                 ", path='" + path + '\'' +
                 ", hash='" + hash + '\'' +
                 ", storagePath='" + storagePath + '\'' +

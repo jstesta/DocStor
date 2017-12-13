@@ -11,21 +11,15 @@ public class SyncFile {
     private static final String TAG = "SyncFile";
 
     private final File file;
-    private boolean isSynced;
     private String hash;
+    private String id;
 
     public SyncFile(String absolutePath) {
         file = new File(absolutePath);
-        if (!file.exists()) {
-            throw new IllegalArgumentException("file not found");
-        }
     }
 
     public SyncFile(File file) {
         this.file = file;
-        if (!file.exists()) {
-            throw new IllegalArgumentException("file not found");
-        }
     }
 
     public String getHash() {
@@ -47,16 +41,16 @@ public class SyncFile {
         return file.exists();
     }
 
-    public boolean isSynced() {
-        return isSynced;
-    }
-
-    public void setSynced(boolean synced) {
-        isSynced = synced;
-    }
-
     public String getName() {
         return file.getName();
+    }
+
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
     }
 
     @Override
@@ -71,15 +65,15 @@ public class SyncFile {
 
     @Override
     public int hashCode() {
-        return file.hashCode();
+        return file.getPath().hashCode();
     }
 
     @Override
     public String toString() {
         return "SyncFile{" +
                 "file=" + file +
-                ", isSynced=" + isSynced +
                 ", hash='" + hash + '\'' +
+                ", id='" + id + '\'' +
                 '}';
     }
 }

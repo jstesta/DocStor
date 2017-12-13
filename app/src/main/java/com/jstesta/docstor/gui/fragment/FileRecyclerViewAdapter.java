@@ -1,5 +1,6 @@
 package com.jstesta.docstor.gui.fragment;
 
+import android.graphics.Color;
 import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -10,6 +11,7 @@ import android.widget.TextView;
 
 import com.jstesta.docstor.R;
 import com.jstesta.docstor.core.FileManager;
+import com.jstesta.docstor.core.enums.FileStatus;
 import com.jstesta.docstor.core.model.SyncFile;
 
 
@@ -22,11 +24,19 @@ public class FileRecyclerViewAdapter extends RecyclerView.Adapter<FileRecyclerVi
     private static final String TAG = "FileRecyclerViewAdapter";
 
     private final FileManager fileManager;
-    private final OnFileCloudUploadClickedListener mListener;
+    private final OnFileCloudUploadClickedListener uploadClickedListener;
+    private final OnFileCloudOverwriteClickedListener overwriteClickedListener;
+    private final OnFileCloudDownloadClickedListener downloadClickedListener;
 
-    public FileRecyclerViewAdapter(FileManager fileManager, OnFileCloudUploadClickedListener listener) {
+    public FileRecyclerViewAdapter(
+            FileManager fileManager,
+            OnFileCloudUploadClickedListener uploadClickedListener,
+            OnFileCloudOverwriteClickedListener overwriteClickedListener,
+            OnFileCloudDownloadClickedListener downloadClickedListener) {
         this.fileManager = fileManager;
-        this.mListener = listener;
+        this.uploadClickedListener = uploadClickedListener;
+        this.overwriteClickedListener = overwriteClickedListener;
+        this.downloadClickedListener = downloadClickedListener;
 
         this.fileManager.addOnItemListUpdatedListener(new FileManager.OnItemListUpdatedListener() {
             @Override
@@ -47,28 +57,58 @@ public class FileRecyclerViewAdapter extends RecyclerView.Adapter<FileRecyclerVi
 
     @Override
     public void onBindViewHolder(final ViewHolder holder, int position) {
-        SyncFile item = fileManager.getLocalFile(position);
+        SyncFile item = fileManager.getFile(position);
 
         holder.mItem = item;
         holder.mPathView.setText(item.getPath());
 
-        if (!item.isSynced()) {
-            holder.mSyncButtonView.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    if (null != mListener) {
-                        // Notify the active callbacks interface (the activity, if the
-                        // fragment is attached to one) that an item has been selected.
-                        mListener.onFileCloudUploadClicked(holder.mItem);
+        FileStatus itemStatus = fileManager.getStatus(item);
+
+        switch (itemStatus) {
+            case NEW:
+                holder.mSyncButtonView.setImageResource(R.drawable.ic_backup_24dp);
+                holder.mSyncButtonView.getDrawable().setTint(Color.parseColor("#00ACC9"));
+                holder.mSyncButtonView.setOnClickListener(null);
+                holder.mSyncButtonView.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        uploadClickedListener.onFileCloudUploadClicked(holder.mItem);
                     }
-                }
-            });
+                });
+                break;
+            case CHANGED:
+                holder.mSyncButtonView.setImageResource(R.drawable.ic_change_history_24dp);
+                holder.mSyncButtonView.getDrawable().setTint(Color.parseColor("#CCCC00"));
+                holder.mSyncButtonView.setOnClickListener(null);
+                holder.mSyncButtonView.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        overwriteClickedListener.onFileCloudOverwriteClicked(holder.mItem);
+                    }
+                });
+                break;
+            case MISSING:
+                holder.mSyncButtonView.setImageResource(R.drawable.ic_cloud_download_24dp);
+                holder.mSyncButtonView.getDrawable().setTint(Color.parseColor("#B22222"));
+                holder.mSyncButtonView.setOnClickListener(null);
+                holder.mSyncButtonView.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        downloadClickedListener.onFileCloudDownloadClicked(holder.mItem);
+                    }
+                });
+                break;
+            case SYNCED:
+                holder.mSyncButtonView.setImageResource(R.drawable.ic_check_24dp);
+                holder.mSyncButtonView.getDrawable().setTint(Color.parseColor("#008000"));
+                holder.mSyncButtonView.setOnClickListener(null);
+                break;
         }
     }
 
     @Override
     public int getItemCount() {
-        return fileManager.getLocalFilesSize();
+        return fileManager.getFilesSize();
     }
 
     public class ViewHolder extends RecyclerView.ViewHolder {
@@ -97,5 +137,13 @@ public class FileRecyclerViewAdapter extends RecyclerView.Adapter<FileRecyclerVi
 
     public interface OnFileCloudUploadClickedListener {
         void onFileCloudUploadClicked(SyncFile item);
+    }
+
+    public interface OnFileCloudOverwriteClickedListener {
+        void onFileCloudOverwriteClicked(SyncFile item);
+    }
+
+    public interface OnFileCloudDownloadClickedListener {
+        void onFileCloudDownloadClicked(SyncFile item);
     }
 }

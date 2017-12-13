@@ -19,6 +19,7 @@ import com.jstesta.docstor.core.FileManager;
 import com.jstesta.docstor.core.enums.MediaType;
 import com.jstesta.docstor.core.firebase.model.RemoteSyncFile;
 import com.jstesta.docstor.core.model.SyncFile;
+import com.jstesta.docstor.core.reactive.FirebaseFirestoreRx;
 import com.jstesta.docstor.core.reactive.FirebaseStorageRx;
 import com.jstesta.docstor.core.reactive.SyncFileRx;
 
@@ -26,6 +27,7 @@ import org.reactivestreams.Publisher;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.UUID;
 
 import io.reactivex.Flowable;
 import io.reactivex.android.schedulers.AndroidSchedulers;
@@ -39,7 +41,9 @@ import io.reactivex.schedulers.Schedulers;
  * <p/>
  */
 public class FileListFragment extends Fragment
-implements FileRecyclerViewAdapter.OnFileCloudUploadClickedListener {
+        implements FileRecyclerViewAdapter.OnFileCloudUploadClickedListener,
+        FileRecyclerViewAdapter.OnFileCloudDownloadClickedListener,
+        FileRecyclerViewAdapter.OnFileCloudOverwriteClickedListener {
 
     private static final String TAG = "FileListFragment";
 
@@ -51,7 +55,8 @@ implements FileRecyclerViewAdapter.OnFileCloudUploadClickedListener {
 
     private FileManager fileManager = new FileManager();
 
-    private StorageReference storageReference;
+    private StorageReference uploadStorageReference;
+    private StorageReference downloadStorageReference;
 
     /**
      * Mandatory empty constructor for the fragment manager to instantiate the
@@ -83,26 +88,24 @@ implements FileRecyclerViewAdapter.OnFileCloudUploadClickedListener {
 
         Log.d(TAG, "onStart: UID --> " + FirebaseAuth.getInstance().getUid());
 
-        Flowable<List<RemoteSyncFile>> task = SyncFileRx.getLocal(mMediaType)
+        Flowable task = SyncFileRx.getLocal(mMediaType)
                 .flatMap(new Function<List<SyncFile>, Publisher<List<RemoteSyncFile>>>() {
                     @Override
                     public Publisher<List<RemoteSyncFile>> apply(List<SyncFile> syncFiles) throws Exception {
                         Log.d(TAG, "apply: " + syncFiles);
-                        fileManager.setLocalFiles(syncFiles);
-                        return SyncFileRx.getRemote(mMediaType, getActivity());
+                        fileManager.setWorkingLocalFiles(syncFiles);
+                        return FirebaseFirestoreRx.getFilesForType(mMediaType, getActivity());
                     }
                 })
                 .flatMap(new Function<List<RemoteSyncFile>, Publisher<List<RemoteSyncFile>>>() {
                     @Override
                     public Publisher<List<RemoteSyncFile>> apply(List<RemoteSyncFile> remoteSyncFiles) throws Exception {
                         Log.d(TAG, "apply: " + remoteSyncFiles);
-                        fileManager.setRemoteFiles(remoteSyncFiles);
+                        fileManager.setWorkingRemoteFiles(remoteSyncFiles);
                         fileManager.sync();
                         return Flowable.empty();
                     }
                 })
-                .subscribeOn(Schedulers.newThread())
-                .observeOn(AndroidSchedulers.mainThread())
                 .onErrorReturn(new Function<Throwable, List<RemoteSyncFile>>() {
                     @Override
                     public List<RemoteSyncFile> apply(Throwable throwable) throws Exception {
@@ -112,8 +115,10 @@ implements FileRecyclerViewAdapter.OnFileCloudUploadClickedListener {
                     }
                 });
 
-        Disposable d = task.subscribe();
-
+        Disposable d = task
+                .subscribeOn(Schedulers.newThread())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe();
         compositeDisposable.add(d);
     }
 
@@ -129,7 +134,7 @@ implements FileRecyclerViewAdapter.OnFileCloudUploadClickedListener {
             Context context = view.getContext();
             RecyclerView recyclerView = (RecyclerView) view;
             recyclerView.setLayoutManager(new LinearLayoutManager(context));
-            recyclerView.setAdapter(new FileRecyclerViewAdapter(fileManager, this));
+            recyclerView.setAdapter(new FileRecyclerViewAdapter(fileManager, this, this, this));
         }
         return view;
     }
@@ -148,19 +153,89 @@ implements FileRecyclerViewAdapter.OnFileCloudUploadClickedListener {
         super.onSaveInstanceState(outState);
 
         // If there's an upload in progress, save the reference so you can query it later
-        if (storageReference != null) {
-            outState.putString(ARG_STORAGE_REF, storageReference.toString());
+        if (uploadStorageReference != null) {
+            outState.putString(ARG_STORAGE_REF, uploadStorageReference.toString());
         }
     }
 
     @Override
     public void onFileCloudUploadClicked(final SyncFile item) {
-        if (storageReference == null) {
-            storageReference = FirebaseStorage.getInstance().getReference();
+        Log.d(TAG, "onFileCloudUploadClicked: ");
+
+        if (uploadStorageReference == null) {
+            uploadStorageReference = FirebaseStorage.getInstance().getReference();
         }
 
-        Flowable<Uri> flowable = FirebaseStorageRx.store(item, storageReference, getActivity());
+        item.setId(UUID.randomUUID().toString());
 
+        Flowable task = FirebaseStorageRx.store(item, uploadStorageReference, getActivity())
+                .flatMap(new Function<Uri, Publisher<RemoteSyncFile>>() {
+                    @Override
+                    public Publisher<RemoteSyncFile> apply(Uri uri) throws Exception {
+                        RemoteSyncFile toSave = new RemoteSyncFile(item.getId(), mMediaType.getIdentifier(), item.getPath(), item.getHash(), uri.toString());
+                        return FirebaseFirestoreRx.save(toSave, getActivity());
+                    }
+                });
 
+        Disposable d = task
+                .subscribeOn(Schedulers.newThread())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe();
+        compositeDisposable.add(d);
+    }
+
+    @Override
+    public void onFileCloudOverwriteClicked(final SyncFile item) {
+        Log.d(TAG, "onFileCloudOverwriteClicked: ");
+
+        if (uploadStorageReference == null) {
+            uploadStorageReference = FirebaseStorage.getInstance().getReference();
+        }
+
+        Flowable task = FirebaseFirestoreRx.find(item.getPath(), getActivity())
+                .flatMap(new Function<RemoteSyncFile, Publisher<Uri>>() {
+                    @Override
+                    public Publisher<Uri> apply(RemoteSyncFile remoteSyncFile) throws Exception {
+                        String id = remoteSyncFile.getId();
+                        item.setId(id);
+                        return FirebaseStorageRx.store(item, uploadStorageReference, getActivity());
+                    }
+                })
+                .flatMap(new Function<Uri, Publisher<SyncFile>>() {
+                    @Override
+                    public Publisher<SyncFile> apply(Uri uri) throws Exception {
+                        return FirebaseFirestoreRx.updateHash(item, getActivity());
+                    }
+                });
+
+        Disposable d = task
+                .subscribeOn(Schedulers.newThread())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe();
+        compositeDisposable.add(d);
+    }
+
+    @Override
+    public void onFileCloudDownloadClicked(final SyncFile item) {
+        Log.d(TAG, "onFileCloudDownloadClicked: ");
+
+        if (downloadStorageReference == null) {
+            downloadStorageReference = FirebaseStorage.getInstance().getReference();
+        }
+
+        Flowable task = FirebaseFirestoreRx.find(item.getPath(), getActivity())
+                .flatMap(new Function<RemoteSyncFile, Publisher<SyncFile>>() {
+                    @Override
+                    public Publisher<SyncFile> apply(RemoteSyncFile remoteSyncFile) throws Exception {
+                        item.setId(remoteSyncFile.getId());
+                        return FirebaseStorageRx.retrieve(item, downloadStorageReference, getActivity());
+                    }
+                });
+
+        Disposable d = task
+                .subscribeOn(Schedulers.newThread())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe();
+        compositeDisposable.add(d);
     }
 }
