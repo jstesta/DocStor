@@ -16,6 +16,8 @@ public class RemoteSyncFile {
 
     private String storagePath;
 
+    private boolean deleted;
+
     public RemoteSyncFile() {
     }
 
@@ -47,6 +49,14 @@ public class RemoteSyncFile {
         return storagePath;
     }
 
+    public boolean isDeleted() {
+        return deleted;
+    }
+
+    public void setDeleted(boolean deleted) {
+        this.deleted = deleted;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -73,6 +83,7 @@ public class RemoteSyncFile {
                 ", path='" + path + '\'' +
                 ", hash='" + hash + '\'' +
                 ", storagePath='" + storagePath + '\'' +
+                ", deleted=" + deleted +
                 '}';
     }
 }

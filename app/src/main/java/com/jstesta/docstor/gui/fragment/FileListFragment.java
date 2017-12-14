@@ -25,7 +25,6 @@ import com.jstesta.docstor.core.reactive.SyncFileRx;
 
 import org.reactivestreams.Publisher;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
@@ -55,8 +54,7 @@ public class FileListFragment extends Fragment
 
     private FileManager fileManager = new FileManager();
 
-    private StorageReference uploadStorageReference;
-    private StorageReference downloadStorageReference;
+    private StorageReference storageReference;
 
     /**
      * Mandatory empty constructor for the fragment manager to instantiate the
@@ -94,7 +92,8 @@ public class FileListFragment extends Fragment
                     public Publisher<List<RemoteSyncFile>> apply(List<SyncFile> syncFiles) throws Exception {
                         Log.d(TAG, "apply: " + syncFiles);
                         fileManager.setWorkingLocalFiles(syncFiles);
-                        return FirebaseFirestoreRx.getFilesForType(mMediaType, getActivity());
+                        //return FirebaseFirestoreRx.getFilesForType(mMediaType, getActivity());
+                        return FirebaseFirestoreRx.subscribeFilesForType(mMediaType, getActivity());
                     }
                 })
                 .flatMap(new Function<List<RemoteSyncFile>, Publisher<List<RemoteSyncFile>>>() {
@@ -104,14 +103,6 @@ public class FileListFragment extends Fragment
                         fileManager.setWorkingRemoteFiles(remoteSyncFiles);
                         fileManager.sync();
                         return Flowable.empty();
-                    }
-                })
-                .onErrorReturn(new Function<Throwable, List<RemoteSyncFile>>() {
-                    @Override
-                    public List<RemoteSyncFile> apply(Throwable throwable) throws Exception {
-                        Log.d(TAG, "errorrrr", throwable);
-                        fileManager.sync();
-                        return Collections.emptyList();
                     }
                 });
 
@@ -153,8 +144,8 @@ public class FileListFragment extends Fragment
         super.onSaveInstanceState(outState);
 
         // If there's an upload in progress, save the reference so you can query it later
-        if (uploadStorageReference != null) {
-            outState.putString(ARG_STORAGE_REF, uploadStorageReference.toString());
+        if (storageReference != null) {
+            outState.putString(ARG_STORAGE_REF, storageReference.toString());
         }
     }
 
@@ -162,13 +153,13 @@ public class FileListFragment extends Fragment
     public void onFileCloudUploadClicked(final SyncFile item) {
         Log.d(TAG, "onFileCloudUploadClicked: ");
 
-        if (uploadStorageReference == null) {
-            uploadStorageReference = FirebaseStorage.getInstance().getReference();
+        if (storageReference == null) {
+            storageReference = FirebaseStorage.getInstance().getReference();
         }
 
         item.setId(UUID.randomUUID().toString());
 
-        Flowable task = FirebaseStorageRx.store(item, uploadStorageReference, getActivity())
+        Flowable task = FirebaseStorageRx.store(item, storageReference, getActivity())
                 .flatMap(new Function<Uri, Publisher<RemoteSyncFile>>() {
                     @Override
                     public Publisher<RemoteSyncFile> apply(Uri uri) throws Exception {
@@ -188,8 +179,8 @@ public class FileListFragment extends Fragment
     public void onFileCloudOverwriteClicked(final SyncFile item) {
         Log.d(TAG, "onFileCloudOverwriteClicked: ");
 
-        if (uploadStorageReference == null) {
-            uploadStorageReference = FirebaseStorage.getInstance().getReference();
+        if (storageReference == null) {
+            storageReference = FirebaseStorage.getInstance().getReference();
         }
 
         Flowable task = FirebaseFirestoreRx.find(item.getPath(), getActivity())
@@ -198,7 +189,7 @@ public class FileListFragment extends Fragment
                     public Publisher<Uri> apply(RemoteSyncFile remoteSyncFile) throws Exception {
                         String id = remoteSyncFile.getId();
                         item.setId(id);
-                        return FirebaseStorageRx.store(item, uploadStorageReference, getActivity());
+                        return FirebaseStorageRx.store(item, storageReference, getActivity());
                     }
                 })
                 .flatMap(new Function<Uri, Publisher<SyncFile>>() {
@@ -219,8 +210,8 @@ public class FileListFragment extends Fragment
     public void onFileCloudDownloadClicked(final SyncFile item) {
         Log.d(TAG, "onFileCloudDownloadClicked: ");
 
-        if (downloadStorageReference == null) {
-            downloadStorageReference = FirebaseStorage.getInstance().getReference();
+        if (storageReference == null) {
+            storageReference = FirebaseStorage.getInstance().getReference();
         }
 
         Flowable task = FirebaseFirestoreRx.find(item.getPath(), getActivity())
@@ -228,7 +219,7 @@ public class FileListFragment extends Fragment
                     @Override
                     public Publisher<SyncFile> apply(RemoteSyncFile remoteSyncFile) throws Exception {
                         item.setId(remoteSyncFile.getId());
-                        return FirebaseStorageRx.retrieve(item, downloadStorageReference, getActivity());
+                        return FirebaseStorageRx.retrieve(item, storageReference, getActivity());
                     }
                 });
 

@@ -58,16 +58,24 @@ public class FileManager {
     }
 
     public void sync() {
-        fileToStatusMap.clear();
+        files.clear();
 
         for (SyncFile file : workingLocalFiles) {
-            Log.d(TAG, String.format("sync: fileToStatusMap.put(%s, %s)", file.getPath(), null));
-            fileToStatusMap.put(file, null);
+            if (!fileToStatusMap.keySet().contains(file)) {
+                Log.d(TAG, String.format("sync: fileToStatusMap.put(%s, %s)", file.getPath(), null));
+                fileToStatusMap.put(file, null);
+            }
         }
 
         for (RemoteSyncFile remoteFile : workingRemoteFiles) {
             SyncFile file = new SyncFile(remoteFile.getPath());
             if (fileToStatusMap.containsKey(file)) {
+                if (remoteFile.isDeleted()) {
+                    Log.d(TAG, String.format("sync: updateHash fileToStatusMap (%s -> %s)", file.getPath(), FileStatus.NEW));
+                    fileToStatusMap.put(file, FileStatus.NEW);
+                    continue;
+                }
+
                 if (!file.exists()) {
                     Log.d(TAG, String.format("sync: updateHash fileToStatusMap (%s -> %s)", file.getPath(), FileStatus.MISSING));
                     fileToStatusMap.put(file, FileStatus.MISSING);

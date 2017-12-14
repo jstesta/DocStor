@@ -179,7 +179,6 @@ public final class FirebaseFirestoreRx {
                                 try {
                                     List<RemoteSyncFile> remoteSyncFiles = parseSnapshot(documentSnapshots);
                                     subscriber.onNext(remoteSyncFiles);
-                                    subscriber.onComplete();
                                 } catch (Exception ex) {
                                     Log.d(TAG, "exception parsing response", ex);
                                     subscriber.onError(ex);
@@ -195,6 +194,11 @@ public final class FirebaseFirestoreRx {
         List<RemoteSyncFile> remoteSyncFiles = new ArrayList<>();
         for (DocumentChange change : snapshot.getDocumentChanges()) {
             RemoteSyncFile rsf = change.getDocument().toObject(RemoteSyncFile.class);
+
+            if (DocumentChange.Type.REMOVED == change.getType()) {
+                rsf.setDeleted(true);
+            }
+
             remoteSyncFiles.add(rsf);
         }
         return remoteSyncFiles;
