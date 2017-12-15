@@ -19,6 +19,7 @@ import com.jstesta.docstor.core.FileManager;
 import com.jstesta.docstor.core.enums.MediaType;
 import com.jstesta.docstor.core.firebase.model.RemoteSyncFile;
 import com.jstesta.docstor.core.model.SyncFile;
+import com.jstesta.docstor.core.reactive.FileObserverRx;
 import com.jstesta.docstor.core.reactive.FirebaseFirestoreRx;
 import com.jstesta.docstor.core.reactive.FirebaseStorageRx;
 import com.jstesta.docstor.core.reactive.SyncFileRx;
@@ -86,13 +87,12 @@ public class FileListFragment extends Fragment
 
         Log.d(TAG, "onStart: UID --> " + FirebaseAuth.getInstance().getUid());
 
-        Flowable task = SyncFileRx.getLocal(mMediaType)
+        Flowable remoteSyncTask = SyncFileRx.getLocal(mMediaType)
                 .flatMap(new Function<List<SyncFile>, Publisher<List<RemoteSyncFile>>>() {
                     @Override
                     public Publisher<List<RemoteSyncFile>> apply(List<SyncFile> syncFiles) throws Exception {
                         Log.d(TAG, "apply: " + syncFiles);
                         fileManager.setWorkingLocalFiles(syncFiles);
-                        //return FirebaseFirestoreRx.getFilesForType(mMediaType, getActivity());
                         return FirebaseFirestoreRx.subscribeFilesForType(mMediaType, getActivity());
                     }
                 })
@@ -106,7 +106,30 @@ public class FileListFragment extends Fragment
                     }
                 });
 
-        Disposable d = task
+        Disposable d = remoteSyncTask
+                .subscribeOn(Schedulers.newThread())
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe();
+        compositeDisposable.add(d);
+
+        Flowable localSyncTask = FileObserverRx.observeMediaDirectory(mMediaType)
+                .flatMap(new Function<String, Publisher<List<SyncFile>>>() {
+                    @Override
+                    public Publisher<List<SyncFile>> apply(String path) throws Exception {
+                        return SyncFileRx.getLocal(mMediaType);
+                    }
+                })
+                .flatMap(new Function<List<SyncFile>, Publisher<List<SyncFile>>>() {
+                    @Override
+                    public Publisher<List<SyncFile>> apply(List<SyncFile> syncFiles) throws Exception {
+                        Log.d(TAG, "apply: " + syncFiles);
+                        fileManager.setWorkingLocalFiles(syncFiles);
+                        fileManager.sync();
+                        return Flowable.empty();
+                    }
+                });
+
+        d = localSyncTask
                 .subscribeOn(Schedulers.newThread())
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe();
