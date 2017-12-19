@@ -1,7 +1,5 @@
 package com.jstesta.docstor.core;
 
-import android.util.Log;
-
 import com.jstesta.docstor.core.enums.FileStatus;
 import com.jstesta.docstor.core.firebase.model.RemoteSyncFile;
 import com.jstesta.docstor.core.model.SyncFile;
@@ -65,7 +63,7 @@ public class FileManager {
 
         for (SyncFile file : workingLocalFiles) {
             if (!fileToStatusMap.keySet().contains(file)) {
-                Log.d(TAG, String.format("sync: fileToStatusMap.put(%s, %s)", file.getPath(), null));
+                //Log.d(TAG, String.format("sync: fileToStatusMap.put(%s, %s)", file.getPath(), null));
                 fileToStatusMap.put(file, null);
             }
         }
@@ -74,27 +72,27 @@ public class FileManager {
             SyncFile file = new SyncFile(remoteFile.getPath());
             if (fileToStatusMap.containsKey(file)) {
                 if (remoteFile.isDeleted()) {
-                    Log.d(TAG, String.format("sync: updateHash fileToStatusMap (%s -> %s)", file.getPath(), FileStatus.NEW));
+                    //Log.d(TAG, String.format("sync: updateHash fileToStatusMap (%s -> %s)", file.getPath(), FileStatus.NEW));
                     fileToStatusMap.put(file, FileStatus.NEW);
                     continue;
                 }
 
                 if (!file.exists()) {
-                    Log.d(TAG, String.format("sync: updateHash fileToStatusMap (%s -> %s)", file.getPath(), FileStatus.MISSING));
+                    //Log.d(TAG, String.format("sync: updateHash fileToStatusMap (%s -> %s)", file.getPath(), FileStatus.MISSING));
                     fileToStatusMap.put(file, FileStatus.MISSING);
                     continue;
                 }
 
                 if (remoteFile.getHash().equals(file.getHash())) {
-                    Log.d(TAG, String.format("sync: updateHash fileToStatusMap (%s -> %s)", file.getPath(), FileStatus.SYNCED));
+                    //Log.d(TAG, String.format("sync: updateHash fileToStatusMap (%s -> %s)", file.getPath(), FileStatus.SYNCED));
                     fileToStatusMap.put(file, FileStatus.SYNCED);
                     continue;
                 }
 
-                Log.d(TAG, String.format("sync: updateHash fileToStatusMap (%s -> %s)", file.getPath(), FileStatus.CHANGED));
+                //Log.d(TAG, String.format("sync: updateHash fileToStatusMap (%s -> %s)", file.getPath(), FileStatus.CHANGED));
                 fileToStatusMap.put(file, FileStatus.CHANGED);
             } else {
-                Log.d(TAG, String.format("sync: fileToStatusMap.put(%s, %s)", file.getPath(), FileStatus.MISSING));
+                //Log.d(TAG, String.format("sync: fileToStatusMap.put(%s, %s)", file.getPath(), FileStatus.MISSING));
                 fileToStatusMap.put(file, FileStatus.MISSING);
             }
         }
@@ -102,7 +100,7 @@ public class FileManager {
         for (Iterator<Map.Entry<SyncFile, FileStatus>> it = fileToStatusMap.entrySet().iterator(); it.hasNext(); ) {
             Map.Entry<SyncFile, FileStatus> entry = it.next();
             if (entry.getValue() == null) {
-                Log.d(TAG, String.format("sync: updateHash fileToStatusMap (%s -> %s)", entry.getKey().getPath(), FileStatus.NEW));
+                //Log.d(TAG, String.format("sync: updateHash fileToStatusMap (%s -> %s)", entry.getKey().getPath(), FileStatus.NEW));
                 entry.setValue(FileStatus.NEW);
             }
 
@@ -118,7 +116,7 @@ public class FileManager {
         fileToStatusMap.putAll(sorted);
 
         files.addAll(fileToStatusMap.keySet());
-        Log.d(TAG, "sync: files -> " + files);
+        //Log.d(TAG, "sync: files -> " + files);
 
         if (itemListUpdatedListener != null) {
             itemListUpdatedListener.onItemListUpdated();

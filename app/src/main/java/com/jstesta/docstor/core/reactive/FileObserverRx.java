@@ -1,6 +1,7 @@
 package com.jstesta.docstor.core.reactive;
 
 import android.support.annotation.Nullable;
+import android.util.Log;
 
 import com.jstesta.docstor.core.MultipleMediaDirectoryObserver;
 import com.jstesta.docstor.core.enums.MediaType;
@@ -15,6 +16,7 @@ import io.reactivex.FlowableOnSubscribe;
  */
 
 public final class FileObserverRx {
+    private static final String TAG = "FileObserverRx";
 
     public static Flowable<String> observeMediaDirectory(final MediaType mediaType) {
         return Flowable.create(new FlowableOnSubscribe<String>() {
@@ -23,6 +25,7 @@ public final class FileObserverRx {
                 MultipleMediaDirectoryObserver observer = new MultipleMediaDirectoryObserver(mediaType, new MultipleMediaDirectoryObserver.OnMediaDirectoryEventListener() {
                     @Override
                     public void onMediaDirectoryEvent(int event, MediaType mediaType, @Nullable String path) {
+                        Log.d(TAG, "onMediaDirectoryEvent");
                         subscriber.onNext(path);
                     }
                 });

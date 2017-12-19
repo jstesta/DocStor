@@ -94,7 +94,7 @@ public class FileListFragment extends Fragment
                 .flatMap(new Function<List<SyncFile>, Publisher<List<RemoteSyncFile>>>() {
                     @Override
                     public Publisher<List<RemoteSyncFile>> apply(List<SyncFile> syncFiles) throws Exception {
-                        Log.d(TAG, "apply: " + syncFiles);
+                        //Log.d(TAG, "apply: " + syncFiles);
                         fileManager.setWorkingLocalFiles(syncFiles);
                         return FirebaseFirestoreRx.subscribeFilesForType(mMediaType, getActivity());
                     }
@@ -102,7 +102,7 @@ public class FileListFragment extends Fragment
                 .flatMap(new Function<List<RemoteSyncFile>, Publisher<List<RemoteSyncFile>>>() {
                     @Override
                     public Publisher<List<RemoteSyncFile>> apply(List<RemoteSyncFile> remoteSyncFiles) throws Exception {
-                        Log.d(TAG, "apply: " + remoteSyncFiles);
+                        //Log.d(TAG, "apply: " + remoteSyncFiles);
                         fileManager.setWorkingRemoteFiles(remoteSyncFiles);
                         fileManager.sync();
                         return Flowable.empty();
@@ -115,20 +115,11 @@ public class FileListFragment extends Fragment
                 .subscribe();
         compositeDisposable.add(d);
 
-//        MultipleMediaDirectoryObserver observer = new MultipleMediaDirectoryObserver(mMediaType,
-//                new MultipleMediaDirectoryObserver.OnMediaDirectoryEventListener() {
-//            @Override
-//            public void onMediaDirectoryEvent(int event, MediaType mediaType, @Nullable String path) {
-//                Log.d(TAG, "onMediaDirectoryEvent: " + event);
-//            }
-//        });
-//
-//        observer.begin();
-
         Flowable localSyncTask = FileObserverRx.observeMediaDirectory(mMediaType)
                 .flatMap(new Function<String, Publisher<List<SyncFile>>>() {
                     @Override
                     public Publisher<List<SyncFile>> apply(String path) throws Exception {
+                        Log.d(TAG, "apply: first");
                         return SyncFileRx.getLocal(mMediaType);
                     }
                 })
@@ -140,19 +131,10 @@ public class FileListFragment extends Fragment
                         fileManager.sync();
                         return Flowable.empty();
                     }
-                })
-//                .flatMap(new Function<List<SyncFile>, Publisher<List<SyncFile>>>() {
-//                    @Override
-//                    public Publisher<List<SyncFile>> apply(List<SyncFile> syncFiles) throws Exception {
-//                        Log.d(TAG, "change data set");
-//                        viewAdapter.notifyDataSetChanged();
-//                        return Flowable.empty();
-//                    }
-//                });
-        ;
+                });
 
         d = localSyncTask
-                .subscribeOn(AndroidSchedulers.mainThread())
+                .subscribeOn(Schedulers.newThread())
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe();
         compositeDisposable.add(d);
