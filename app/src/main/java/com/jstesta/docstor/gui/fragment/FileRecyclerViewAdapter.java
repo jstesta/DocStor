@@ -27,22 +27,26 @@ public class FileRecyclerViewAdapter extends RecyclerView.Adapter<FileRecyclerVi
     private final OnFileCloudUploadClickedListener uploadClickedListener;
     private final OnFileCloudOverwriteClickedListener overwriteClickedListener;
     private final OnFileCloudDownloadClickedListener downloadClickedListener;
+    private final OnFileListChangedListener fileListChangedListener;
 
     public FileRecyclerViewAdapter(
             FileManager fileManager,
             OnFileCloudUploadClickedListener uploadClickedListener,
             OnFileCloudOverwriteClickedListener overwriteClickedListener,
-            OnFileCloudDownloadClickedListener downloadClickedListener) {
+            OnFileCloudDownloadClickedListener downloadClickedListener,
+            OnFileListChangedListener fileListChangedListener) {
         this.fileManager = fileManager;
         this.uploadClickedListener = uploadClickedListener;
         this.overwriteClickedListener = overwriteClickedListener;
         this.downloadClickedListener = downloadClickedListener;
+        this.fileListChangedListener = fileListChangedListener;
+
 
         this.fileManager.addOnItemListUpdatedListener(new FileManager.OnItemListUpdatedListener() {
             @Override
             public void onItemListUpdated() {
                 Log.d(TAG, "onItemListUpdated");
-                FileRecyclerViewAdapter.this.notifyDataSetChanged();
+                FileRecyclerViewAdapter.this.fileListChangedListener.onFileListChanged();
             }
         });
     }
@@ -145,5 +149,9 @@ public class FileRecyclerViewAdapter extends RecyclerView.Adapter<FileRecyclerVi
 
     public interface OnFileCloudDownloadClickedListener {
         void onFileCloudDownloadClicked(SyncFile item);
+    }
+
+    public interface OnFileListChangedListener {
+        void onFileListChanged();
     }
 }

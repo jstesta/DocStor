@@ -43,7 +43,8 @@ import io.reactivex.schedulers.Schedulers;
 public class FileListFragment extends Fragment
         implements FileRecyclerViewAdapter.OnFileCloudUploadClickedListener,
         FileRecyclerViewAdapter.OnFileCloudDownloadClickedListener,
-        FileRecyclerViewAdapter.OnFileCloudOverwriteClickedListener {
+        FileRecyclerViewAdapter.OnFileCloudOverwriteClickedListener,
+        FileRecyclerViewAdapter.OnFileListChangedListener {
 
     private static final String TAG = "FileListFragment";
 
@@ -56,6 +57,8 @@ public class FileListFragment extends Fragment
     private FileManager fileManager = new FileManager();
 
     private StorageReference storageReference;
+
+    private FileRecyclerViewAdapter viewAdapter;
 
     /**
      * Mandatory empty constructor for the fragment manager to instantiate the
@@ -112,6 +115,16 @@ public class FileListFragment extends Fragment
                 .subscribe();
         compositeDisposable.add(d);
 
+//        MultipleMediaDirectoryObserver observer = new MultipleMediaDirectoryObserver(mMediaType,
+//                new MultipleMediaDirectoryObserver.OnMediaDirectoryEventListener() {
+//            @Override
+//            public void onMediaDirectoryEvent(int event, MediaType mediaType, @Nullable String path) {
+//                Log.d(TAG, "onMediaDirectoryEvent: " + event);
+//            }
+//        });
+//
+//        observer.begin();
+
         Flowable localSyncTask = FileObserverRx.observeMediaDirectory(mMediaType)
                 .flatMap(new Function<String, Publisher<List<SyncFile>>>() {
                     @Override
@@ -127,10 +140,19 @@ public class FileListFragment extends Fragment
                         fileManager.sync();
                         return Flowable.empty();
                     }
-                });
+                })
+//                .flatMap(new Function<List<SyncFile>, Publisher<List<SyncFile>>>() {
+//                    @Override
+//                    public Publisher<List<SyncFile>> apply(List<SyncFile> syncFiles) throws Exception {
+//                        Log.d(TAG, "change data set");
+//                        viewAdapter.notifyDataSetChanged();
+//                        return Flowable.empty();
+//                    }
+//                });
+        ;
 
         d = localSyncTask
-                .subscribeOn(Schedulers.newThread())
+                .subscribeOn(AndroidSchedulers.mainThread())
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe();
         compositeDisposable.add(d);
@@ -148,7 +170,8 @@ public class FileListFragment extends Fragment
             Context context = view.getContext();
             RecyclerView recyclerView = (RecyclerView) view;
             recyclerView.setLayoutManager(new LinearLayoutManager(context));
-            recyclerView.setAdapter(new FileRecyclerViewAdapter(fileManager, this, this, this));
+            viewAdapter = new FileRecyclerViewAdapter(fileManager, this, this, this, this);
+            recyclerView.setAdapter(viewAdapter);
         }
         return view;
     }
@@ -251,5 +274,16 @@ public class FileListFragment extends Fragment
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe();
         compositeDisposable.add(d);
+    }
+
+    @Override
+    public void onFileListChanged() {
+        Log.d(TAG, "onFileListChanged");
+        getActivity().runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                FileListFragment.this.viewAdapter.notifyDataSetChanged();
+            }
+        });
     }
 }

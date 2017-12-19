@@ -9,6 +9,7 @@ import com.jstesta.docstor.core.model.SyncFile;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -60,6 +61,8 @@ public class FileManager {
     public void sync() {
         files.clear();
 
+        // TODO fix bug when create file, then delete file before uploading
+
         for (SyncFile file : workingLocalFiles) {
             if (!fileToStatusMap.keySet().contains(file)) {
                 Log.d(TAG, String.format("sync: fileToStatusMap.put(%s, %s)", file.getPath(), null));
@@ -96,10 +99,17 @@ public class FileManager {
             }
         }
 
-        for (Map.Entry<SyncFile, FileStatus> entry : fileToStatusMap.entrySet()) {
+        for (Iterator<Map.Entry<SyncFile, FileStatus>> it = fileToStatusMap.entrySet().iterator(); it.hasNext(); ) {
+            Map.Entry<SyncFile, FileStatus> entry = it.next();
             if (entry.getValue() == null) {
                 Log.d(TAG, String.format("sync: updateHash fileToStatusMap (%s -> %s)", entry.getKey().getPath(), FileStatus.NEW));
                 entry.setValue(FileStatus.NEW);
+            }
+
+            if (FileStatus.NEW == entry.getValue()) {
+                if (!workingLocalFiles.contains(entry.getKey())) {
+                    it.remove();
+                }
             }
         }
 
