@@ -3,6 +3,8 @@ package com.jstesta.docstor.gui.fragment;
 import android.content.Context;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.FileObserver;
+import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
@@ -16,16 +18,19 @@ import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
 import com.jstesta.docstor.R;
 import com.jstesta.docstor.core.FileManager;
+import com.jstesta.docstor.core.MultipleMediaDirectoryObserver;
 import com.jstesta.docstor.core.enums.MediaType;
 import com.jstesta.docstor.core.firebase.model.RemoteSyncFile;
 import com.jstesta.docstor.core.model.SyncFile;
-import com.jstesta.docstor.core.reactive.FileObserverRx;
 import com.jstesta.docstor.core.reactive.FirebaseFirestoreRx;
 import com.jstesta.docstor.core.reactive.FirebaseStorageRx;
 import com.jstesta.docstor.core.reactive.SyncFileRx;
+import com.jstesta.docstor.core.util.MediaStorageUtil;
 
 import org.reactivestreams.Publisher;
 
+import java.io.File;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -58,7 +63,12 @@ public class FileListFragment extends Fragment
 
     private StorageReference storageReference;
 
+    private RecyclerView recyclerView;
     private FileRecyclerViewAdapter viewAdapter;
+
+    private Flowable remoteSyncTask;
+
+    private MultipleMediaDirectoryObserver fileObserver;
 
     /**
      * Mandatory empty constructor for the fragment manager to instantiate the
@@ -75,6 +85,10 @@ public class FileListFragment extends Fragment
         return fragment;
     }
 
+    public MediaType getMediaType() {
+        return mMediaType;
+    }
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -82,15 +96,10 @@ public class FileListFragment extends Fragment
         if (getArguments() != null) {
             mMediaType = (MediaType) getArguments().getSerializable(ARG_FILE_DIRECTORY);
         }
-    }
 
-    @Override
-    public void onStart() {
-        super.onStart();
+        Log.d(TAG, "onCreate: " + mMediaType);
 
-        Log.d(TAG, "onStart: UID --> " + FirebaseAuth.getInstance().getUid());
-
-        Flowable remoteSyncTask = SyncFileRx.getLocal(mMediaType)
+        remoteSyncTask = SyncFileRx.getLocal(mMediaType)
                 .flatMap(new Function<List<SyncFile>, Publisher<List<RemoteSyncFile>>>() {
                     @Override
                     public Publisher<List<RemoteSyncFile>> apply(List<SyncFile> syncFiles) throws Exception {
@@ -99,45 +108,82 @@ public class FileListFragment extends Fragment
                         return FirebaseFirestoreRx.subscribeFilesForType(mMediaType, getActivity());
                     }
                 })
-                .flatMap(new Function<List<RemoteSyncFile>, Publisher<List<RemoteSyncFile>>>() {
+                .flatMap(new Function<List<RemoteSyncFile>, Publisher<Boolean>>() {
                     @Override
-                    public Publisher<List<RemoteSyncFile>> apply(List<RemoteSyncFile> remoteSyncFiles) throws Exception {
+                    public Publisher<Boolean> apply(List<RemoteSyncFile> remoteSyncFiles) throws Exception {
                         //Log.d(TAG, "apply: " + remoteSyncFiles);
                         fileManager.setWorkingRemoteFiles(remoteSyncFiles);
-                        fileManager.sync();
-                        return Flowable.empty();
+                        return SyncFileRx.syncFileManager(fileManager);
                     }
                 });
 
-        Disposable d = remoteSyncTask
+        Log.d(TAG, "onCreate: UID --> " + FirebaseAuth.getInstance().getUid());
+    }
+
+    @Override
+    public void onStart() {
+        super.onStart();
+
+        Log.d(TAG, "onStart: " + mMediaType);
+
+        compositeDisposable.add(remoteSyncTask
                 .subscribeOn(Schedulers.newThread())
                 .observeOn(AndroidSchedulers.mainThread())
-                .subscribe();
-        compositeDisposable.add(d);
+                .subscribe());
 
-        Flowable localSyncTask = FileObserverRx.observeMediaDirectory(mMediaType)
-                .flatMap(new Function<String, Publisher<List<SyncFile>>>() {
-                    @Override
-                    public Publisher<List<SyncFile>> apply(String path) throws Exception {
-                        Log.d(TAG, "apply: first");
-                        return SyncFileRx.getLocal(mMediaType);
-                    }
-                })
-                .flatMap(new Function<List<SyncFile>, Publisher<List<SyncFile>>>() {
-                    @Override
-                    public Publisher<List<SyncFile>> apply(List<SyncFile> syncFiles) throws Exception {
-                        Log.d(TAG, "apply: " + syncFiles);
+        fileObserver = new MultipleMediaDirectoryObserver(mMediaType, new MultipleMediaDirectoryObserver.OnMediaDirectoryEventListener() {
+            @Override
+            public void onMediaDirectoryEvent(int event, MediaType mediaType, @Nullable String path) {
+                Log.d(TAG, "onMediaDirectoryEvent: " + event);
+
+                switch (event) {
+                    case 32768:
+                        Log.d(TAG, "32768 event detected");
+                        if (getActivity() == null) {
+                            break;
+                        }
+                        Log.d(TAG, "and activity not null");
+                        fileObserver.end();
+                        fileObserver.begin();
+                        break;
+
+                    case FileObserver.CREATE:
+                        final List<File> fileList = MediaStorageUtil.listFilesIn(mediaType);
+                        Log.d(TAG, "fileList: " + fileList);
+
+                        List<SyncFile> syncFiles = new ArrayList<>();
+                        for (File f : fileList) {
+                            syncFiles.add(new SyncFile(f));
+                        }
+
                         fileManager.setWorkingLocalFiles(syncFiles);
-                        fileManager.sync();
-                        return Flowable.empty();
-                    }
-                });
 
-        d = localSyncTask
-                .subscribeOn(Schedulers.newThread())
-                .observeOn(AndroidSchedulers.mainThread())
-                .subscribe();
-        compositeDisposable.add(d);
+                        Flowable task = SyncFileRx.getLocal(mMediaType)
+                                .flatMap(new Function<List<SyncFile>, Publisher<Boolean>>() {
+                                    @Override
+                                    public Publisher<Boolean> apply(List<SyncFile> syncFiles) throws Exception {
+                                        return SyncFileRx.syncFileManager(fileManager);
+                                    }
+                                });
+
+                        compositeDisposable.add(task
+                                .subscribeOn(AndroidSchedulers.mainThread())
+                                .observeOn(AndroidSchedulers.mainThread())
+                                .subscribe());
+                        break;
+
+                    case FileObserver.MODIFY:
+                    case FileObserver.DELETE:
+                        compositeDisposable.add(SyncFileRx.syncFileManager(fileManager)
+                                .subscribeOn(AndroidSchedulers.mainThread())
+                                .observeOn(AndroidSchedulers.mainThread())
+                                .subscribe());
+                        break;
+                }
+            }
+        });
+
+        fileObserver.begin();
     }
 
     @Override
@@ -150,7 +196,7 @@ public class FileListFragment extends Fragment
         // Set the adapter
         if (view instanceof RecyclerView) {
             Context context = view.getContext();
-            RecyclerView recyclerView = (RecyclerView) view;
+            recyclerView = (RecyclerView) view;
             recyclerView.setLayoutManager(new LinearLayoutManager(context));
             viewAdapter = new FileRecyclerViewAdapter(fileManager, this, this, this, this);
             recyclerView.setAdapter(viewAdapter);
@@ -162,9 +208,10 @@ public class FileListFragment extends Fragment
     public void onStop() {
         super.onStop();
 
-        Log.d(TAG, "onStop");
+        Log.d(TAG, "onStop: " + mMediaType);
 
         compositeDisposable.clear();
+        fileObserver.end();
     }
 
     @Override
@@ -178,7 +225,7 @@ public class FileListFragment extends Fragment
     }
 
     @Override
-    public void onFileCloudUploadClicked(final SyncFile item) {
+    public void onFileCloudUploadClicked(final SyncFile item, int position) {
         Log.d(TAG, "onFileCloudUploadClicked: ");
 
         if (storageReference == null) {
@@ -204,7 +251,7 @@ public class FileListFragment extends Fragment
     }
 
     @Override
-    public void onFileCloudOverwriteClicked(final SyncFile item) {
+    public void onFileCloudOverwriteClicked(final SyncFile item, int position) {
         Log.d(TAG, "onFileCloudOverwriteClicked: ");
 
         if (storageReference == null) {
@@ -235,7 +282,7 @@ public class FileListFragment extends Fragment
     }
 
     @Override
-    public void onFileCloudDownloadClicked(final SyncFile item) {
+    public void onFileCloudDownloadClicked(final SyncFile item, int position) {
         Log.d(TAG, "onFileCloudDownloadClicked: ");
 
         if (storageReference == null) {
@@ -260,7 +307,8 @@ public class FileListFragment extends Fragment
 
     @Override
     public void onFileListChanged() {
-        Log.d(TAG, "onFileListChanged");
+        Log.d(TAG, "onFileListChanged: " + mMediaType);
+
         getActivity().runOnUiThread(new Runnable() {
             @Override
             public void run() {

@@ -29,10 +29,11 @@ public class MultipleMediaDirectoryObserver {
     public MultipleMediaDirectoryObserver(final MediaType mediaType, final OnMediaDirectoryEventListener listener) {
         Log.d(TAG, "MultipleMediaDirectoryObserver create");
         for (String path : mediaType.getPaths()) {
+            //Log.d(TAG, "MultipleMediaDirectoryObserver: path -> " + path);
             File dir = Environment.getExternalStoragePublicDirectory(path);
 
             if (!dir.exists() || !dir.isDirectory()) {
-                Log.d(TAG, "MultipleMediaDirectoryObserver: will not monitor " + path);
+                //Log.d(TAG, "MultipleMediaDirectoryObserver: will not monitor " + path);
                 continue;
             }
 
@@ -41,13 +42,7 @@ public class MultipleMediaDirectoryObserver {
                 FileObserver observer = new FileObserver(canonicalPath, MASK) {
                     @Override
                     public void onEvent(int event, @Nullable String path) {
-                        Log.d(TAG, "onEvent: " + path);
-
-                        if (path == null) {
-                            Log.w(TAG, "null path encountered in FileObserver");
-                            return;
-                        }
-
+                        //Log.d(TAG, String.format("onEvent: %d, path: %s", event, path));
                         listener.onMediaDirectoryEvent(event, mediaType, path);
                     }
                 };
@@ -62,8 +57,16 @@ public class MultipleMediaDirectoryObserver {
     public void begin() {
         Log.d(TAG, "begin");
         for (FileObserver observer : observers) {
-            Log.d(TAG, "observer start watching");
+            //Log.d(TAG, "observer start watching");
             observer.startWatching();
+        }
+    }
+
+    public void end() {
+        Log.d(TAG, "end");
+        for (FileObserver observer : observers) {
+            //Log.d(TAG, "observer stop watching");
+            observer.stopWatching();
         }
     }
 

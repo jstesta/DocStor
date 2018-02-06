@@ -7,6 +7,7 @@ import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentTransaction;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 
@@ -51,22 +52,38 @@ public class MainActivity extends AppCompatActivity
     @Override
     public boolean onNavigationItemSelected(@NonNull MenuItem item) {
 
+        Log.d(TAG, "onNavigationItemSelected");
+
+        FileListFragment currentFragment = (FileListFragment) getSupportFragmentManager()
+                .findFragmentById(R.id.fragment_container);
+
         FragmentTransaction fragmentTransaction;
 
         switch (item.getItemId()) {
             case R.id.documents:
+                if (currentFragment != null && currentFragment.getMediaType() == MediaType.DOCUMENTS) {
+                    return true;
+                }
                 Fragment docFragment = FileListFragment.newInstance(MediaType.DOCUMENTS);
                 fragmentTransaction = getSupportFragmentManager().beginTransaction();
                 fragmentTransaction.replace(R.id.fragment_container, docFragment, "docFragment");
                 fragmentTransaction.commit();
                 return true;
+
             case R.id.music:
+                if (currentFragment != null && currentFragment.getMediaType() == MediaType.MUSIC) {
+                    return true;
+                }
                 Fragment musicFragment = FileListFragment.newInstance(MediaType.MUSIC);
                 fragmentTransaction = getSupportFragmentManager().beginTransaction();
                 fragmentTransaction.replace(R.id.fragment_container, musicFragment, "musicFragment");
                 fragmentTransaction.commit();
                 return true;
+
             case R.id.pictures:
+                if (currentFragment != null && currentFragment.getMediaType() == MediaType.PICTURES) {
+                    return true;
+                }
                 Fragment picsFragment = FileListFragment.newInstance(MediaType.PICTURES);
                 fragmentTransaction = getSupportFragmentManager().beginTransaction();
                 fragmentTransaction.replace(R.id.fragment_container, picsFragment, "picsFragment");

@@ -41,7 +41,6 @@ public class FileRecyclerViewAdapter extends RecyclerView.Adapter<FileRecyclerVi
         this.downloadClickedListener = downloadClickedListener;
         this.fileListChangedListener = fileListChangedListener;
 
-
         this.fileManager.addOnItemListUpdatedListener(new FileManager.OnItemListUpdatedListener() {
             @Override
             public void onItemListUpdated() {
@@ -76,7 +75,11 @@ public class FileRecyclerViewAdapter extends RecyclerView.Adapter<FileRecyclerVi
                 holder.mSyncButtonView.setOnClickListener(new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
-                        uploadClickedListener.onFileCloudUploadClicked(holder.mItem);
+                        uploadClickedListener.onFileCloudUploadClicked(holder.mItem, holder.getAdapterPosition());
+                        v.setClickable(false);
+
+//                        ProgressBar progressBar = holder.mView.findViewById(R.id.progressBar);
+//                        progressBar.setVisibility(View.VISIBLE);
                     }
                 });
                 break;
@@ -87,7 +90,11 @@ public class FileRecyclerViewAdapter extends RecyclerView.Adapter<FileRecyclerVi
                 holder.mSyncButtonView.setOnClickListener(new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
-                        overwriteClickedListener.onFileCloudOverwriteClicked(holder.mItem);
+                        overwriteClickedListener.onFileCloudOverwriteClicked(holder.mItem, holder.getAdapterPosition());
+                        v.setClickable(false);
+
+//                        ProgressBar progressBar = holder.mView.findViewById(R.id.progressBar);
+//                        progressBar.setVisibility(View.VISIBLE);
                     }
                 });
                 break;
@@ -98,7 +105,11 @@ public class FileRecyclerViewAdapter extends RecyclerView.Adapter<FileRecyclerVi
                 holder.mSyncButtonView.setOnClickListener(new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
-                        downloadClickedListener.onFileCloudDownloadClicked(holder.mItem);
+                        downloadClickedListener.onFileCloudDownloadClicked(holder.mItem, holder.getAdapterPosition());
+                        v.setClickable(false);
+
+//                        ProgressBar progressBar = holder.mView.findViewById(R.id.progressBar);
+//                        progressBar.setVisibility(View.VISIBLE);
                     }
                 });
                 break;
@@ -120,6 +131,7 @@ public class FileRecyclerViewAdapter extends RecyclerView.Adapter<FileRecyclerVi
         public final TextView mPathView;
         public final ImageButton mSyncButtonView;
         public SyncFile mItem;
+        public int position;
 
         public ViewHolder(View view) {
             super(view);
@@ -140,15 +152,15 @@ public class FileRecyclerViewAdapter extends RecyclerView.Adapter<FileRecyclerVi
     }
 
     public interface OnFileCloudUploadClickedListener {
-        void onFileCloudUploadClicked(SyncFile item);
+        void onFileCloudUploadClicked(SyncFile item, int position);
     }
 
     public interface OnFileCloudOverwriteClickedListener {
-        void onFileCloudOverwriteClicked(SyncFile item);
+        void onFileCloudOverwriteClicked(SyncFile item, int position);
     }
 
     public interface OnFileCloudDownloadClickedListener {
-        void onFileCloudDownloadClicked(SyncFile item);
+        void onFileCloudDownloadClicked(SyncFile item, int position);
     }
 
     public interface OnFileListChangedListener {

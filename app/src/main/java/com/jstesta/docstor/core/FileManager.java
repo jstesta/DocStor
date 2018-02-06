@@ -1,5 +1,7 @@
 package com.jstesta.docstor.core;
 
+import android.util.Log;
+
 import com.jstesta.docstor.core.enums.FileStatus;
 import com.jstesta.docstor.core.firebase.model.RemoteSyncFile;
 import com.jstesta.docstor.core.model.SyncFile;
@@ -22,7 +24,7 @@ public class FileManager {
     private final List<SyncFile> workingLocalFiles = new ArrayList<>();
     private final List<RemoteSyncFile> workingRemoteFiles = new ArrayList<>();
 
-    private final LinkedHashMap<SyncFile, FileStatus> fileToStatusMap = new LinkedHashMap<>();
+    private final Map<SyncFile, FileStatus> fileToStatusMap = new LinkedHashMap<>();
     private final List<SyncFile> files = new ArrayList<>();
 
     private OnItemListUpdatedListener itemListUpdatedListener;
@@ -56,10 +58,8 @@ public class FileManager {
         return fileToStatusMap.get(file);
     }
 
-    public void sync() {
+    public synchronized void sync() {
         files.clear();
-
-        // TODO fix bug when create file, then delete file before uploading
 
         for (SyncFile file : workingLocalFiles) {
             if (!fileToStatusMap.keySet().contains(file)) {
@@ -107,6 +107,7 @@ public class FileManager {
             if (FileStatus.NEW == entry.getValue()) {
                 if (!workingLocalFiles.contains(entry.getKey())) {
                     it.remove();
+
                 }
             }
         }
@@ -116,14 +117,14 @@ public class FileManager {
         fileToStatusMap.putAll(sorted);
 
         files.addAll(fileToStatusMap.keySet());
-        //Log.d(TAG, "sync: files -> " + files);
+        Log.d(TAG, "sync: files -> " + files);
 
         if (itemListUpdatedListener != null) {
             itemListUpdatedListener.onItemListUpdated();
         }
     }
 
-    private LinkedHashMap<SyncFile, FileStatus> sort(LinkedHashMap<SyncFile, FileStatus> input) {
+    private LinkedHashMap<SyncFile, FileStatus> sort(Map<SyncFile, FileStatus> input) {
         List<Map.Entry<SyncFile, FileStatus>> entries = new ArrayList<>(input.entrySet());
 
         Collections.sort(entries, new Comparator<Map.Entry<SyncFile, FileStatus>>() {

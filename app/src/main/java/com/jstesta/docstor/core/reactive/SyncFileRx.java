@@ -2,6 +2,7 @@ package com.jstesta.docstor.core.reactive;
 
 import android.util.Log;
 
+import com.jstesta.docstor.core.FileManager;
 import com.jstesta.docstor.core.enums.MediaType;
 import com.jstesta.docstor.core.model.SyncFile;
 import com.jstesta.docstor.core.util.MediaStorageUtil;
@@ -28,7 +29,7 @@ public final class SyncFileRx {
             @Override
             public void subscribe(FlowableEmitter<List<SyncFile>> subscriber) throws Exception {
                 List<File> fileList = MediaStorageUtil.listFilesIn(mediaType);
-                Log.d(TAG, "subscribe: " + fileList);
+                Log.d(TAG, "getLocal::subscribe: " + fileList);
 
                 List<SyncFile> syncFiles = new ArrayList<>();
                 for (File f : fileList) {
@@ -39,5 +40,17 @@ public final class SyncFileRx {
                 subscriber.onComplete();
             }
         }, BackpressureStrategy.BUFFER);
+    }
+
+    public static Flowable<Boolean> syncFileManager(final FileManager fileManager) {
+        return Flowable.create(new FlowableOnSubscribe<Boolean>() {
+            @Override
+            public void subscribe(FlowableEmitter<Boolean> subscriber) throws Exception {
+                Log.d(TAG, "syncFileManager::subscribe");
+                fileManager.sync();
+                subscriber.onNext(true);
+                subscriber.onComplete();
+            }
+        }, BackpressureStrategy.DROP);
     }
 }
